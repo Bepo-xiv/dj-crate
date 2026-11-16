@@ -369,3 +369,25 @@ test('tracklist texte', () => {
   ok(txt.startsWith('Samedi — 2026-11-14 — Le Hangar'));
   ok(txt.includes('01. Lune Froide – Aube Minérale [8A/Am, 118 BPM, E3]'));
 });
+
+// ---------- Pack de départ ----------
+import { starterTracks } from '../js/data/starter-pack.js';
+suite('Pack de départ');
+test('2000 morceaux valides, sans doublon', () => {
+  const raw = starterTracks();
+  eq(raw.length, 2000);
+  const r = mergeTracks([], raw);
+  eq(r.added, 2000); eq(r.skipped, 0);
+  ok(r.tracks.every(t => t.title !== 'Sans titre' && t.artist && t.genre && t.duration > 0));
+});
+test('BPM, clé et énergie du pack sont valides', () => {
+  const ts = starterTracks().map(normalizeTrack);
+  ok(ts.every(t => t.energy >= 1 && t.energy <= 10));
+  ok(ts.every(t => t.bpm === 0 || (t.bpm >= 75 && t.bpm <= 200)));
+  ok(ts.every(t => t.key === '' || ALL_KEYS.includes(t.key)));
+  ok(ts.filter(t => t.bpm > 0).length > 1000); ok(ts.filter(t => t.key).length > 800);
+});
+test('recharger le pack ne crée aucun doublon', () => {
+  const once = mergeTracks([], starterTracks()).tracks;
+  eq(mergeTracks(once, starterTracks()).added, 0);
+});

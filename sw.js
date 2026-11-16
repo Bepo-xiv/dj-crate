@@ -17,6 +17,7 @@ const FILES = [
   'js/core/model.js',
   'js/core/importers.js',
   'js/core/demo.js',
+  'js/data/starter-pack.js',
   'js/ui/state.js',
   'js/ui/util.js',
   'js/ui/sketch.js',

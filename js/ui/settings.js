@@ -28,6 +28,7 @@ app.views.settings = {
         <button class="btn" data-act="import-csv">Importer un CSV</button>
         <button class="btn" data-act="import-rb">Importer un XML Rekordbox</button>
         <button class="btn" data-act="export-csv">Exporter en CSV</button>
+        <button class="btn" data-act="pack-load">Charger le pack de 2000 morceaux</button>
         <button class="btn" data-act="demo-load">Charger la démo</button>
       </div>
 
@@ -109,6 +110,10 @@ app.on('import-csv', async () => { const raw = await readFile(tracksFromCSV); if
 app.on('import-rb', async () => { const raw = await readFile(tracksFromRekordbox); if (raw) addTracks(raw, 'Rekordbox'); });
 app.on('export-csv', () => saveFile(`dj-crate-morceaux-${today()}.csv`, tracksToCSV(app.state.tracks), 'text/csv'));
 app.on('demo-load', () => addTracks(demoTracks(), 'Démo'));
+app.on('pack-load', async () => {
+  try { const { starterTracks } = await import('../data/starter-pack.js'); addTracks(starterTracks(), 'Pack de départ'); }
+  catch { toast('Pack introuvable : ouvre une fois l’application avec Internet pour le télécharger.'); }
+});
 
 app.on('erase-all', async () => {
   if (!await confirmDialog('Effacer TOUS les morceaux et TOUS les sets de cet iPad ? Exporte une sauvegarde avant si tu veux pouvoir revenir en arrière.', 'Tout effacer', true)) return;
