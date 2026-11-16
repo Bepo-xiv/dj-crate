@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>DJ Crate — tests</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { background: #000; color: #fff; font: 16px/1.4 -apple-system, "Segoe UI", sans-serif; padding: 16px; }
+  h2 { color: #ffd60a; font-size: 15px; margin: 18px 0 6px; }
+  .ok { color: #32d74b; } .ko { color: #ff5a4f; font-weight: 700; }
+  li { list-style: none; } ul { padding: 0; margin: 0; }
+</style>
+</head>
+<body>
+<h1 id="summary">Tests en cours…</h1>
+<div id="out"></div>
+<script type="module">
+  import { results } from './harness.js';
+  import './all.test.js';
+  const esc = (s) => String(s).replace(/[&<]/g, c => ({ '&': '&amp;', '<': '&lt;' }[c]));
+  let html = '', suite = '';
+  for (const r of results) {
+    if (r.suite !== suite) { if (suite) html += '</ul>'; suite = r.suite; html += `<h2>${esc(suite)}</h2><ul>`; }
+    html += `<li class="${r.ok ? 'ok' : 'ko'}">${r.ok ? '✓' : '✗'} ${esc(r.name)}${r.ok ? '' : ' — ' + esc(r.error)}</li>`;
+  }
+  const failed = results.filter(r => !r.ok).length;
+  document.getElementById('out').innerHTML = html + '</ul>';
+  const s = document.getElementById('summary');
+  s.textContent = `${results.length - failed} / ${results.length} tests réussis`;
+  s.className = failed ? 'ko' : 'ok';
+</script>
+</body>
+</html>
