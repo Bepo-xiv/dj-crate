@@ -35,7 +35,7 @@ function listHtml() {
 
 function filterPanel() {
   const f = app.ui.filters;
-  const genres = facet(app.state.tracks, 'genre'), tags = facet(app.state.tracks, 'tags');
+  const genres = facet(app.state.tracks, 'genre');
   return `<section class="filters">
     <div class="frow"><span class="lbl">BPM</span><div class="chips">
       ${BPM_RANGES.map(([a, b, l]) => chip(l, f.bpmMin === a && f.bpmMax === b && (a || b), 'f-bpm', { min: a, max: b })).join('')}
@@ -50,8 +50,6 @@ function filterPanel() {
     </div></div>
     ${genres.length ? `<div class="frow"><span class="lbl">Genre</span><div class="chips">
       ${genres.map(g => chip(`${esc(g.value)} <small>${g.n}</small>`, f.genres.includes(g.value), 'f-toggle', { field: 'genres', value: g.value })).join('')}</div></div>` : ''}
-    ${tags.length ? `<div class="frow"><span class="lbl">Tags</span><div class="chips">
-      ${tags.map(g => chip(`#${esc(g.value)} <small>${g.n}</small>`, f.tags.includes(g.value), 'f-toggle', { field: 'tags', value: g.value })).join('')}</div></div>` : ''}
     <div class="frow"><button class="btn" data-act="f-reset">Tout effacer</button><button class="btn primary" data-act="filters-toggle">Fermer les filtres</button></div>
   </section>`;
 }
@@ -65,7 +63,7 @@ app.views.library = {
   render() {
     const f = app.ui.filters, n = activeFilterCount(f), s = app.ui.sort;
     return `<header class="bar">
-        <input type="search" class="search" placeholder="Rechercher titre, artiste, tag…" value="${esc(f.q)}" data-input="search" enterkeyhint="search" autocapitalize="off" autocorrect="off">
+        <input type="search" class="search" placeholder="Rechercher titre, artiste, genre…" value="${esc(f.q)}" data-input="search" enterkeyhint="search" autocapitalize="off" autocorrect="off">
         <button class="btn ${n || app.ui.filtersOpen ? 'on' : ''}" data-act="filters-toggle">Filtres${n ? ` <b class="pill">${n}</b>` : ''}</button>
         <button class="btn primary" data-act="track-new" aria-label="Ajouter un morceau">＋</button>
       </header>
@@ -123,7 +121,6 @@ function detailHtml(t) {
         <span><small>Durée</small><b>${formatDuration(t.duration) || '—'}</b></span>
         <span><small>Genre</small><b>${esc(t.genre || '—')}</b></span>
       </div>
-      ${t.tags.length ? `<p class="tags">${t.tags.map(x => `<span class="tag">#${esc(x)}</span>`).join('')}</p>` : ''}
       <div class="actions">
         <button class="btn primary" data-act="live-play" data-id="${esc(t.id)}">▶ Jouer en Live</button>
         <button class="btn" data-act="track-add-to-set">＋ Ajouter à un set</button>
@@ -171,7 +168,6 @@ function formHtml(t, isNew) {
       <p class="hint" id="key-fb">${t.key ? '✓ ' + keyLabel(t.key) : 'Clé non renseignée'}</p>
       <div class="field">Énergie<input type="hidden" name="energy" value="${t.energy || 0}">
         <div class="chips energy-pick">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(e => `<button type="button" class="chip ${t.energy === e ? 'on' : ''}" data-act="form-energy" data-v="${e}">${e}</button>`).join('')}</div></div>
-      <label>Tags (séparés par des virgules)<input name="tags" value="${esc(t.tags.join(', '))}" autocapitalize="off"></label>
       <label>Notes<textarea name="notes" rows="4">${esc(t.notes)}</textarea></label>
       <div class="field">Cue points
         <div id="cue-list">${t.cues.map(cueRow).join('')}</div>
@@ -250,7 +246,7 @@ app.on('edit-save', () => {
   const t = normalizeTrack({
     ...(old || {}),
     title: val('title'), artist: val('artist'), genre: val('genre'), bpm: val('bpm'), key: val('key'),
-    energy: val('energy'), duration: val('duration'), tags: val('tags'), notes: val('notes'),
+    energy: val('energy'), duration: val('duration'), notes: val('notes'),
     cues: times.map((el, i) => ({ time: el.value, label: labels[i].value })),
     updatedAt: new Date().toISOString(),
   });

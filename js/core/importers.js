@@ -37,7 +37,6 @@ const HEADERS = {
   key: ['key', 'clé', 'cle', 'tonalité', 'tonalite', 'tonality', 'camelot', 'tonart'],
   energy: ['energy', 'énergie', 'energie'],
   duration: ['duration', 'durée', 'duree', 'time', 'length', 'total time'],
-  tags: ['tags', 'tag', 'étiquettes', 'etiquettes'],
   notes: ['notes', 'note', 'comment', 'comments', 'commentaire', 'commentaires'],
   cues: ['cues', 'cue', 'cue points'],
 };
@@ -57,7 +56,7 @@ export function tracksFromCSV(text) {
     const get = (f) => (col[f] != null ? (r[col[f]] || '').trim() : '');
     return {
       title: get('title'), artist: get('artist'), genre: get('genre'), bpm: get('bpm'), key: get('key'),
-      energy: get('energy'), duration: get('duration'), tags: get('tags'), notes: get('notes'),
+      energy: get('energy'), duration: get('duration'), notes: get('notes'),
       cues: get('cues').split('|').map(c => c.trim()).filter(Boolean).map(c => {
         const m = /^([\d:.,]+)\s*(.*)$/.exec(c);
         return m ? { time: m[1], label: m[2] } : { time: '', label: c };
@@ -73,11 +72,11 @@ const csvCell = (v) => {
 
 /** Export CSV (séparateur ; — s'ouvre directement dans Excel en français). */
 export function tracksToCSV(tracks) {
-  const lines = [['Titre', 'Artiste', 'Genre', 'BPM', 'Clé', 'Tonalité', 'Énergie', 'Durée', 'Tags', 'Notes', 'Cues'].join(';')];
+  const lines = [['Titre', 'Artiste', 'Genre', 'BPM', 'Clé', 'Tonalité', 'Énergie', 'Durée', 'Notes', 'Cues'].join(';')];
   for (const t of tracks) {
     lines.push([
       t.title, t.artist, t.genre, t.bpm || '', t.key, keyName(t.key), t.energy || '', formatDuration(t.duration),
-      t.tags.join(', '), t.notes, t.cues.map(c => `${c.time} ${c.label}`.trim()).join(' | '),
+      t.notes, t.cues.map(c => `${c.time} ${c.label}`.trim()).join(' | '),
     ].map(csvCell).join(';'));
   }
   return '﻿' + lines.join('\r\n');
@@ -118,7 +117,7 @@ export function tracksFromRekordbox(xml) {
     }
     cues.sort((x, y) => x.sec - y.sec);
     out.push({
-      title: a.Name, artist: a.Artist || '', genre: a.Genre || '', bpm: a.AverageBpm || '',
+      rbId: a.TrackID || '', title: a.Name, artist: a.Artist || '', genre: a.Genre || '', bpm: a.AverageBpm || '',
       key: a.Tonality || '', duration: Number(a.TotalTime) || 0, notes: a.Comments || '',
       cues: cues.map(({ time, label }) => ({ time, label })),
     });

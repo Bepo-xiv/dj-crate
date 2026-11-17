@@ -3,7 +3,7 @@ import { ALL_KEYS, parseKey, keyName, keyLabel, shiftKey, switchLetter, keyRelat
 import { DEFAULT_SETTINGS, bpmMatch, energyMatch, scoreTransition, findCompatible } from '../js/core/compat.js';
 import { CURVES, CURVE_POINTS, curveValue, playSeconds, buildSet, analyzeSet } from '../js/core/setbuilder.js';
 import {
-  parseDuration, formatDuration, parseTags, normalizeTrack, normalizeSet, normalizeState, makeBackup, parseBackup,
+  parseDuration, formatDuration, normalizeTrack, normalizeSet, normalizeState, makeBackup, parseBackup,
   mergeTracks, mergeState, setsForTrack, emptyFilters, filterTracks, sortTracks, facet, activeFilterCount, emptyState,
 } from '../js/core/model.js';
 import { parseCSV, tracksFromCSV, tracksToCSV, tracksFromRekordbox, setToText } from '../js/core/importers.js';
@@ -238,11 +238,10 @@ test('durées', () => {
   eq(parseDuration(''), 0); eq(parseDuration('abc'), 0); eq(parseDuration(245.6), 246);
   eq(formatDuration(332), '5:32'); eq(formatDuration(3723), '1:02:03'); eq(formatDuration(0), ''); eq(formatDuration(59), '0:59');
 });
-test('tags : séparateurs, #, doublons', () => eq(parseTags('#peak, Vocal; peak ,, '), ['peak', 'Vocal']));
 test('normalisation d\'un morceau', () => {
   const t = T({ title: '  Test ', bpm: '124,5', key: 'La m', energy: '7', duration: '6:00', tags: 'a,b', cues: [{ time: '1:00', label: 'drop' }, {}] });
   eq(t.title, 'Test'); eq(t.bpm, 124.5); eq(t.key, '8A'); eq(t.energy, 7); eq(t.duration, 360);
-  eq(t.tags, ['a', 'b']); eq(t.cues.length, 1); ok(t.id.length > 5);
+  ok(!('tags' in t)); eq(t.cues.length, 1); ok(t.id.length > 5);
 });
 test('valeurs invalides neutralisées', () => {
   const t = T({ bpm: 'vite', key: '??', energy: 14 });
@@ -288,7 +287,7 @@ test('sans filtre : tout', () => eq(filterTracks(lib(), emptyFilters()).length, 
 test('recherche texte multi-mots, sans accents', () => {
   eq(filterTracks(lib(), F({ q: 'zenith' })).length, 1);
   eq(filterTracks(lib(), F({ q: 'lune froide' })).length, 2);
-  eq(filterTracks(lib(), F({ q: 'techno peak acid' })).length, 2);
+  eq(filterTracks(lib(), F({ q: 'deep house lune' })).length, 2);
   eq(filterTracks(lib(), F({ q: 'introuvable' })).length, 0);
 });
 test('plage de BPM', () => {
@@ -301,15 +300,11 @@ test('clés, genres, énergies', () => {
   eq(filterTracks(lib(), F({ genres: ['techno'] })).length, 5);
   ok(filterTracks(lib(), F({ energies: [9, 10] })).every(t => t.energy >= 9));
 });
-test('tags : tous requis', () => {
-  eq(filterTracks(lib(), F({ tags: ['disco', 'vocal'] })).length, 1);
-  ok(filterTracks(lib(), F({ tags: ['peak'] })).length >= 5);
-});
 test('filtres combinés', () => {
-  const r = filterTracks(lib(), F({ genres: ['Techno'], energies: [9], bpmMin: 130, q: 'acid' }));
+  const r = filterTracks(lib(), F({ genres: ['Techno'], energies: [9], bpmMin: 130, q: 'strobo' }));
   eq(r.map(t => t.title), ['Stroboscope']);
 });
-test('nombre de filtres actifs', () => { eq(activeFilterCount(emptyFilters()), 0); eq(activeFilterCount(F({ bpmMin: 120, tags: ['a'] })), 2); });
+test('nombre de filtres actifs', () => { eq(activeFilterCount(emptyFilters()), 0); eq(activeFilterCount(F({ bpmMin: 120, keys: ['8A'] })), 2); });
 test('tri par BPM, clé, titre ; inconnus à la fin', () => {
   const tracks = [T({ title: 'b', bpm: 128, key: '10A' }), T({ title: 'a', bpm: 0, key: '' }), T({ title: 'c', bpm: 120, key: '2B' })];
   eq(sortTracks(tracks, 'bpm').map(t => t.title), ['c', 'b', 'a']);
@@ -317,10 +312,9 @@ test('tri par BPM, clé, titre ; inconnus à la fin', () => {
   eq(sortTracks(tracks, 'title').map(t => t.title), ['a', 'b', 'c']);
   eq(sortTracks(tracks, 'title', -1).map(t => t.title), ['c', 'b', 'a']);
 });
-test('facettes genres / tags', () => {
+test('facettes genres', () => {
   const g = facet(lib(), 'genre');
   eq(g[0].value, 'Techno'); eq(g[0].n, 5); ok(g.some(x => x.value === 'Disco' && x.n === 2));
-  ok(facet(lib(), 'tags').some(x => x.value === 'peak'));
 });
 
 // ---------------------------------------------------------------- Import / export
@@ -334,7 +328,7 @@ test('CSV -> morceaux (en-têtes français ou anglais)', () => {
   const t = tracksFromCSV('Titre;Artiste;BPM;Clé;Énergie;Durée;Tags\nZénith;Elio;124;Am;7;7:10;"a, b"');
   eq(t.length, 1);
   const n = T(t[0]);
-  eq(n.key, '8A'); eq(n.bpm, 124); eq(n.duration, 430); eq(n.tags, ['a', 'b']);
+  eq(n.key, '8A'); eq(n.bpm, 124); eq(n.duration, 430); ok(!('tags' in n));
   eq(T(tracksFromCSV('Title,Artist,Key\nX,Y,11B')[0]).key, '11B');
 });
 test('CSV sans colonne titre : erreur claire', () => throws(() => tracksFromCSV('foo,bar\n1,2')));
@@ -343,7 +337,7 @@ test('export CSV puis réimport à l\'identique', () => {
   const back = tracksFromCSV(tracksToCSV(tracks)).map(normalizeTrack);
   eq(back.length, tracks.length);
   for (let i = 0; i < tracks.length; i++) {
-    for (const f of ['title', 'artist', 'genre', 'bpm', 'key', 'energy', 'duration', 'tags', 'notes', 'cues']) eq(back[i][f], tracks[i][f], `${tracks[i].title}.${f}`);
+    for (const f of ['title', 'artist', 'genre', 'bpm', 'key', 'energy', 'duration', 'notes', 'cues']) eq(back[i][f], tracks[i][f], `${tracks[i].title}.${f}`);
   }
 });
 test('XML Rekordbox', () => {
@@ -370,24 +364,24 @@ test('tracklist texte', () => {
   ok(txt.includes('01. Lune Froide – Aube Minérale [8A/Am, 118 BPM, E3]'));
 });
 
-// ---------- Pack de départ ----------
-import { starterTracks } from '../js/data/starter-pack.js';
-suite('Pack de départ');
-test('2000 morceaux valides, sans doublon', () => {
-  const raw = starterTracks();
-  eq(raw.length, 2000);
-  const r = mergeTracks([], raw);
-  eq(r.added, 2000); eq(r.skipped, 0);
-  ok(r.tracks.every(t => t.title !== 'Sans titre' && t.artist && t.genre && t.duration > 0));
+// ---------- Packs Rekordbox ----------
+import { PACKS, PACK_ROWS, packTracks } from '../js/data/packs.js';
+suite('Packs Rekordbox');
+test('chaque pack a un nom unique et des morceaux', () => {
+  ok(PACKS.length > 0); eq(new Set(PACKS.map(p => p.id)).size, PACKS.length);
+  ok(PACKS.every(p => p.name && p.idx.length > 0 && p.idx.every(i => PACK_ROWS[i])));
 });
-test('BPM, clé et énergie du pack sont valides', () => {
-  const ts = starterTracks().map(normalizeTrack);
-  ok(ts.every(t => t.energy >= 1 && t.energy <= 10));
-  ok(ts.every(t => t.bpm === 0 || (t.bpm >= 75 && t.bpm <= 200)));
+test('morceaux valides, sans notes', () => {
+  const ts = PACKS.flatMap(p => packTracks(p.id)).map(normalizeTrack);
+  ok(ts.every(t => t.title !== 'Sans titre' && t.duration > 0));
+  ok(ts.every(t => t.bpm === 0 || (t.bpm >= 60 && t.bpm <= 200)));
   ok(ts.every(t => t.key === '' || ALL_KEYS.includes(t.key)));
-  ok(ts.filter(t => t.bpm > 0).length > 1000); ok(ts.filter(t => t.key).length > 800);
+  ok(ts.every(t => t.notes === ''));
 });
-test('recharger le pack ne crée aucun doublon', () => {
-  const once = mergeTracks([], starterTracks()).tracks;
-  eq(mergeTracks(once, starterTracks()).added, 0);
+test('tous les packs ensemble : aucun doublon, rechargement sans effet', () => {
+  const all = PACKS.flatMap(p => packTracks(p.id));
+  const r = mergeTracks([], all);
+  eq(r.added, PACK_ROWS.length);
+  eq(mergeTracks(r.tracks, all).added, 0);
 });
+test('pack inconnu : liste vide', () => eq(packTracks('nope'), []));

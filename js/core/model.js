@@ -28,16 +28,6 @@ export function formatDuration(sec) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
-export function parseTags(v) {
-  const arr = Array.isArray(v) ? v : String(v || '').split(/[,;]/);
-  const seen = new Set(), out = [];
-  for (const raw of arr) {
-    const t = String(raw).trim().replace(/^#/, '');
-    if (t && !seen.has(t.toLowerCase())) { seen.add(t.toLowerCase()); out.push(t); }
-  }
-  return out;
-}
-
 const str = (v) => (v == null ? '' : String(v).trim());
 
 export function normalizeTrack(raw = {}) {
@@ -53,7 +43,6 @@ export function normalizeTrack(raw = {}) {
     key: parseKey(raw.key) || '',
     energy: energy >= 1 && energy <= 10 ? energy : 0,
     duration: parseDuration(raw.duration),
-    tags: parseTags(raw.tags),
     notes: raw.notes == null ? '' : String(raw.notes),
     cues: (Array.isArray(raw.cues) ? raw.cues : [])
       .map(c => ({ time: str(c && c.time), label: str(c && c.label) }))
@@ -172,18 +161,17 @@ export function setsForTrack(trackId, sets) {
 // ---------- Recherche, filtres, tri ----------
 
 export function emptyFilters() {
-  return { q: '', bpmMin: 0, bpmMax: 0, keys: [], genres: [], energies: [], tags: [] };
+  return { q: '', bpmMin: 0, bpmMax: 0, keys: [], genres: [], energies: [] };
 }
 
 export function activeFilterCount(f) {
   return (f.bpmMin || f.bpmMax ? 1 : 0) + (f.keys.length ? 1 : 0) + (f.genres.length ? 1 : 0)
-    + (f.energies.length ? 1 : 0) + (f.tags.length ? 1 : 0);
+    + (f.energies.length ? 1 : 0);
 }
 
 export function filterTracks(tracks, f) {
   const tokens = norm(f.q).split(/\s+/).filter(Boolean);
   const genres = new Set((f.genres || []).map(norm));
-  const tags = (f.tags || []).map(norm);
   const keys = new Set(f.keys || []);
   const energies = new Set(f.energies || []);
   return tracks.filter(t => {
@@ -192,12 +180,8 @@ export function filterTracks(tracks, f) {
     if (keys.size && !keys.has(t.key)) return false;
     if (genres.size && !genres.has(norm(t.genre))) return false;
     if (energies.size && !energies.has(t.energy)) return false;
-    if (tags.length) {
-      const tt = t.tags.map(norm);
-      if (!tags.every(x => tt.includes(x))) return false; // tous les tags demandés
-    }
     if (tokens.length) {
-      const hay = norm([t.title, t.artist, t.genre, t.key, t.tags.join(' '), t.notes].join(' '));
+      const hay = norm([t.title, t.artist, t.genre, t.key, t.notes].join(' '));
       if (!tokens.every(tok => hay.includes(tok))) return false;
     }
     return true;
@@ -220,11 +204,11 @@ export function sortTracks(tracks, field = 'title', dir = 1) {
   });
 }
 
-/** Valeurs distinctes (genres ou tags) triées par fréquence. */
+/** Valeurs distinctes (ex. genres) triées par fréquence. */
 export function facet(tracks, field) {
   const count = new Map();
   for (const t of tracks) {
-    const vals = field === 'tags' ? t.tags : [t[field]];
+    const vals = [t[field]];
     for (const v of vals) if (v) count.set(v, (count.get(v) || 0) + 1);
   }
   return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([value, n]) => ({ value, n }));

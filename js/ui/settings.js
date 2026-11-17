@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '../core/compat.js';
 import { makeBackup, parseBackup, mergeState, mergeTracks, emptyState, normalizeState } from '../core/model.js';
 import { tracksFromCSV, tracksToCSV, tracksFromRekordbox } from '../core/importers.js';
 import { demoTracks } from '../core/demo.js';
+import { PACKS, packTracks } from '../data/packs.js';
 import { getItem, setItem } from '../store.js';
 import { APP_VERSION } from '../version.js';
 import { stepper, chip, toast, confirmDialog, saveFile, pickFile, openModal, today, frDate } from './util.js';
@@ -28,8 +29,14 @@ app.views.settings = {
         <button class="btn" data-act="import-csv">Importer un CSV</button>
         <button class="btn" data-act="import-rb">Importer un XML Rekordbox</button>
         <button class="btn" data-act="export-csv">Exporter en CSV</button>
-        <button class="btn" data-act="pack-load">Charger le pack de 2000 morceaux</button>
         <button class="btn" data-act="demo-load">Charger la démo</button>
+      </div>
+
+      <h2>Packs <small class="dim">— tes playlists Rekordbox</small></h2>
+      <p class="dim">Chaque pack ajoute les morceaux d'une playlist (BPM, clé et cue points inclus). Un morceau déjà présent n'est jamais ajouté deux fois.</p>
+      <div class="actions">
+        ${PACKS.map(p => `<button class="btn" data-act="pack-load" data-pack="${p.id}">${p.name} <small class="dim">(${p.idx.length})</small></button>`).join('')}
+        <button class="btn primary" data-act="pack-load" data-pack="*">Tous les packs</button>
       </div>
 
       <h2>Compatibilité des transitions</h2>
@@ -110,9 +117,9 @@ app.on('import-csv', async () => { const raw = await readFile(tracksFromCSV); if
 app.on('import-rb', async () => { const raw = await readFile(tracksFromRekordbox); if (raw) addTracks(raw, 'Rekordbox'); });
 app.on('export-csv', () => saveFile(`dj-crate-morceaux-${today()}.csv`, tracksToCSV(app.state.tracks), 'text/csv'));
 app.on('demo-load', () => addTracks(demoTracks(), 'Démo'));
-app.on('pack-load', async () => {
-  try { const { starterTracks } = await import('../data/starter-pack.js'); addTracks(starterTracks(), 'Pack de départ'); }
-  catch { toast('Pack introuvable : ouvre une fois l’application avec Internet pour le télécharger.'); }
+app.on('pack-load', ({ pack }) => {
+  if (pack === '*') addTracks(PACKS.flatMap(p => packTracks(p.id)), 'Tous les packs');
+  else addTracks(packTracks(pack), 'Pack « ' + (PACKS.find(p => p.id === pack) || {}).name + ' »');
 });
 
 app.on('erase-all', async () => {
