@@ -111,7 +111,7 @@ app.on('merge-json', async () => {
 function addTracks(raw, label) {
   const r = mergeTracks(app.state.tracks, raw);
   app.state.tracks = r.tracks; app.commit();
-  toast(`${label} : ${r.added} morceau(x) ajouté(s), ${r.skipped} doublon(s) ignoré(s).`);
+  toast(`${label} : ${r.added} morceau(x) ajouté(s), ${r.skipped} doublon(s) ignoré(s)${r.filled ? `, dont ${r.filled} complété(s) (énergie, BPM, clé…)` : ''}.`);
 }
 app.on('import-csv', async () => { const raw = await readFile(tracksFromCSV); if (raw) addTracks(raw, 'CSV'); });
 app.on('import-rb', async () => { const raw = await readFile(tracksFromRekordbox); if (raw) addTracks(raw, 'Rekordbox'); });

@@ -1,6 +1,6 @@
 // Service worker : met toute l'app en cache pour un fonctionnement 100 % hors ligne.
 // À CHAQUE MISE À JOUR de l'app, change ce numéro (et celui de js/version.js) :
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 const CACHE = 'dj-crate-' + VERSION;
 const FILES = [

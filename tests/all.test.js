@@ -268,6 +268,14 @@ test('fusion sans doublon (titre + artiste, insensible à la casse et aux accent
   const r = mergeTracks(base, [{ title: 'zenith', artist: 'ELIO' }, { title: 'Autre', artist: 'Elio' }]);
   eq(r.added, 1); eq(r.skipped, 1); eq(r.tracks.length, 2);
 });
+test('fusion : un doublon complète les champs vides sans rien écraser', () => {
+  const base = [T({ id: '1', title: 'Zénith', artist: 'Elio', bpm: 124, energy: 0, key: '' })];
+  const r = mergeTracks(base, [{ title: 'zenith', artist: 'elio', bpm: 130, energy: 7, key: '8A' }]);
+  eq(r.added, 0); eq(r.filled, 1);
+  eq(r.tracks[0].bpm, 124); eq(r.tracks[0].energy, 7); eq(r.tracks[0].key, '8A'); eq(r.tracks[0].id, '1');
+  eq(base[0].energy, 0); // l'original n'est pas modifié
+  eq(mergeTracks(r.tracks, [{ title: 'Zénith', artist: 'Elio', energy: 3 }]).filled, 0);
+});
 test('fusion de sauvegardes : les sets suivent les morceaux fusionnés', () => {
   const state = normalizeState({ tracks: [{ id: 'loc', title: 'Zénith', artist: 'Elio' }] });
   const incoming = normalizeState({ tracks: [{ id: 'ext', title: 'Zénith', artist: 'Elio' }, { id: 'n', title: 'Neuf' }], sets: [{ id: 'sx', name: 'S', trackIds: ['ext', 'n'] }] });
@@ -377,6 +385,7 @@ test('morceaux valides, sans notes', () => {
   ok(ts.every(t => t.bpm === 0 || (t.bpm >= 60 && t.bpm <= 200)));
   ok(ts.every(t => t.key === '' || ALL_KEYS.includes(t.key)));
   ok(ts.every(t => t.notes === ''));
+  ok(ts.every(t => t.energy >= 1 && t.energy <= 10));
 });
 test('tous les packs ensemble : aucun doublon, rechargement sans effet', () => {
   const all = PACKS.flatMap(p => packTracks(p.id));

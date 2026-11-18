@@ -118,24 +118,34 @@ const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 export const normalizeText = norm;
 export const trackSignature = (t) => norm(t.title) + '|' + norm(t.artist);
 
-/** Ajoute des morceaux en ignorant les doublons (même titre + artiste). */
+const FILLABLE = ['energy', 'bpm', 'key', 'duration'];
+
+/** Ajoute des morceaux en ignorant les doublons (même titre + artiste).
+ *  Un doublon complète seulement les champs vides du morceau existant (énergie, BPM, clé, durée) — rien n'est écrasé. */
 export function mergeTracks(existing, incoming) {
-  const seen = new Map(existing.map(t => [trackSignature(t), t.id]));
+  const seen = new Map(existing.map((t, i) => [trackSignature(t), i]));
   const ids = new Set(existing.map(t => t.id));
   const tracks = [...existing];
   const idMap = new Map(); // id entrant -> id final (utile pour fusionner des sets)
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, filled = 0;
   for (const raw of incoming) {
     const t = normalizeTrack(raw);
     const sig = trackSignature(t);
-    if (seen.has(sig)) { idMap.set(t.id, seen.get(sig)); skipped++; continue; }
+    if (seen.has(sig)) {
+      const i = seen.get(sig), cur = tracks[i];
+      idMap.set(t.id, cur.id); skipped++;
+      const patch = {};
+      for (const f of FILLABLE) if (!cur[f] && t[f]) patch[f] = t[f];
+      if (Object.keys(patch).length) { tracks[i] = { ...cur, ...patch }; filled++; }
+      continue;
+    }
     const oldId = t.id;
     if (ids.has(t.id)) t.id = newId();
     idMap.set(oldId, t.id);
-    seen.set(sig, t.id); ids.add(t.id);
+    seen.set(sig, tracks.length); ids.add(t.id);
     tracks.push(t); added++;
   }
-  return { tracks, added, skipped, idMap };
+  return { tracks, added, skipped, filled, idMap };
 }
 
 /** Fusionne une sauvegarde dans l'état courant (sans rien écraser). */
